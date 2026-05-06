@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Components &#8212; icestorm-bin  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Building from Source" href="building.html" />
+    <link rel="prev" title="Installation" href="installation.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="components">
+<h1>Components<a class="headerlink" href="#components" title="Link to this heading">¶</a></h1>
+<section id="icepack">
+<h2>icepack<a class="headerlink" href="#icepack" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">icepack</span></code> packs and unpacks iCE40 bitstream files.  It converts between the
+binary <code class="docutils literal notranslate"><span class="pre">.bin</span></code> format (written to flash) and the text <code class="docutils literal notranslate"><span class="pre">.asc</span></code> format used
+by <code class="docutils literal notranslate"><span class="pre">icetime</span></code> and <code class="docutils literal notranslate"><span class="pre">icebox</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">icepack</span> <span class="n">design</span><span class="o">.</span><span class="n">asc</span> <span class="n">design</span><span class="o">.</span><span class="n">bin</span>       <span class="c1"># pack to binary</span>
+<span class="n">icepack</span> <span class="o">-</span><span class="n">u</span> <span class="n">design</span><span class="o">.</span><span class="n">bin</span> <span class="n">design</span><span class="o">.</span><span class="n">asc</span>    <span class="c1"># unpack to text</span>
+</pre></div>
+</div>
+</section>
+<section id="icebox">
+<h2>icebox<a class="headerlink" href="#icebox" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">icebox</span></code> is both a Python library and a collection of command-line utilities
+for introspecting iCE40 netlists.  It provides:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">icebox_chipdb</span></code> — generate chip database files</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">icebox_hlc</span></code> — convert bitstream to high-level connectivity description</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">icebox_stat</span></code> — print bitstream resource utilisation statistics</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">icebox_vlog</span></code> — convert bitstream to Verilog netlist</p></li>
+</ul>
+<p>As a Python library it exposes the full chip database and bitstream
+manipulation API:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">icebox</span>
+<span class="n">ic</span> <span class="o">=</span> <span class="n">icebox</span><span class="o">.</span><span class="n">iceconfig</span><span class="p">()</span>
+<span class="n">ic</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">&quot;design.asc&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="icetime">
+<h2>icetime<a class="headerlink" href="#icetime" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">icetime</span></code> performs static timing analysis on an iCE40 <code class="docutils literal notranslate"><span class="pre">.asc</span></code> bitstream
+and reports the maximum clock frequency for each clock domain:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">icetime</span> <span class="o">-</span><span class="n">d</span> <span class="n">hx8k</span> <span class="n">design</span><span class="o">.</span><span class="n">asc</span>
+</pre></div>
+</div>
+</section>
+<section id="icemulti">
+<h2>icemulti<a class="headerlink" href="#icemulti" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">icemulti</span></code> combines multiple iCE40 bitstreams into a single file for
+multi-boot configurations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">icemulti</span> <span class="o">-</span><span class="n">v</span> <span class="o">-</span><span class="n">o</span> <span class="n">multi</span><span class="o">.</span><span class="n">bin</span> <span class="n">boot0</span><span class="o">.</span><span class="n">bin</span> <span class="n">boot1</span><span class="o">.</span><span class="n">bin</span>
+</pre></div>
+</div>
+</section>
+<section id="icepll">
+<h2>icepll<a class="headerlink" href="#icepll" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">icepll</span></code> is an interactive PLL configuration calculator.  Given a desired
+output frequency it computes the PLL divider settings for the target iCE40
+device:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">icepll</span> <span class="o">-</span><span class="n">i</span> <span class="mi">12</span> <span class="o">-</span><span class="n">o</span> <span class="mi">48</span>
+</pre></div>
+</div>
+</section>
+<section id="icebram">
+<h2>icebram<a class="headerlink" href="#icebram" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">icebram</span></code> replaces the BRAM initialisation data in an existing <code class="docutils literal notranslate"><span class="pre">.asc</span></code>
+bitstream without a full re-synthesis, which is useful for updating firmware
+images:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">icebram</span> <span class="n">firmware_old</span><span class="o">.</span><span class="n">hex</span> <span class="n">firmware_new</span><span class="o">.</span><span class="n">hex</span> <span class="o">&lt;</span> <span class="n">design</span><span class="o">.</span><span class="n">asc</span> <span class="o">&gt;</span> <span class="n">updated</span><span class="o">.</span><span class="n">asc</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">icestorm-bin</a></h1>
+
+
+
+<p class="blurb">Portable Project IceStorm binary distribution</p>
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=EDAPack&repo=icestorm-bin&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Components</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#icepack">icepack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#icebox">icebox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#icetime">icetime</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#icemulti">icemulti</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#icepll">icepll</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#icebram">icebram</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="building.html">Building from Source</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="installation.html" title="previous chapter">Installation</a></li>
+      <li>Next: <a href="building.html" title="next chapter">Building from Source</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023-2025, Matthew Ballance and Contributors.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.0.4</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/components.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/EDAPack/icestorm-bin" class="github">
+        <img src="_static/github-banner.svg" alt="Fork me on GitHub" class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>
