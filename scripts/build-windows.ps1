@@ -49,6 +49,14 @@ $content = $content -replace 'if \(abs\(fout - f_pllout\) < abs\(best_fout - f_p
                               'if (fabs(fout - f_pllout) < fabs(best_fout - f_pllout))'
 Set-Content $icepllPath $content -NoNewline
 
+# iceutil.cc (non-MinGW branch): uses WCHAR for longpath but calls GetModuleFileName
+# (which without UNICODE defined maps to GetModuleFileNameA, taking char*).
+# Change WCHAR longpath to TCHAR longpath so both buffer types match the API.
+$iceutilPath = "$icestormDir\icetime\iceutil.cc"
+$content = Get-Content $iceutilPath -Raw
+$content = $content -replace 'WCHAR longpath\[MAX_PATH \+ 1\];', 'TCHAR longpath[MAX_PATH + 1];'
+Set-Content $iceutilPath $content -NoNewline
+
 # ── Configure + build ─────────────────────────────────────────────────────────
 $installDir = "$root\release\icestorm"
 $buildDir   = "$root\build-windows"

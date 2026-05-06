@@ -1,7 +1,11 @@
 /* Windows compat stub for <unistd.h>.
- * On Windows only getopt / getopt_long are pulled in from this header
- * by the icestorm sources; everything else is provided natively. */
+ * Provides getopt/getopt_long (from getopt.h) and getpid (via process.h). */
 #pragma once
 #ifdef _WIN32
 #include "getopt.h"
+#include <process.h>
+/* POSIX getpid() → Windows _getpid() */
+#ifndef getpid
+#define getpid _getpid
+#endif
 #endif

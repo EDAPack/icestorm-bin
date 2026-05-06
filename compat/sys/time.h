@@ -1,16 +1,12 @@
 /* Windows compat stub for <sys/time.h>.
- * Provides struct timeval and gettimeofday() via the Windows FILETIME API. */
+ * Include winsock2.h first (which defines struct timeval) then windows.h,
+ * then provide gettimeofday() via GetSystemTimeAsFileTime. */
 #pragma once
 #ifdef _WIN32
 
-#ifndef _TIMEVAL_DEFINED
-#define _TIMEVAL_DEFINED
-struct timeval {
-    long tv_sec;
-    long tv_usec;
-};
-#endif
-
+/* winsock2.h must come before windows.h to avoid winsock/winsock2 conflicts
+ * and to get the authoritative definition of struct timeval. */
+#include <winsock2.h>
 #include <windows.h>
 
 static inline int gettimeofday(struct timeval *tv, void *tz)
