@@ -21,7 +21,9 @@ wrapper invokes it inside the correct Docker container::
 
 You can also specify a different manylinux image::
 
+    ./scripts/build-local.sh manylinux2014_x86_64
     ./scripts/build-local.sh manylinux_2_28_x86_64
+    ./scripts/build-local.sh manylinux_2_34_x86_64
 
 Or run Docker directly::
 
@@ -77,8 +79,8 @@ Steps:
 
 1. **version-check** — constructs the release version string as
    ``1.1.<run-id>``.
-2. **build-linux-x86_64** — launches the Docker-based build inside
-   ``manylinux_2_34_x86_64``.
+2. **build-linux-x86_64** — matrix build across ``manylinux2014_x86_64``,
+   ``manylinux_2_28_x86_64``, and ``manylinux_2_34_x86_64``.
 3. **publish** — creates a GitHub Release and attaches the tarball.
 
 Documentation is built separately and published to GitHub Pages whenever

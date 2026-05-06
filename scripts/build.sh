@@ -6,9 +6,8 @@ root=$(pwd)
 #* Install required packages
 #********************************************************************
 if test $(uname -s) = "Linux"; then
-    dnf update -y
-    dnf install -y wget make gcc gcc-c++ git python3 patchelf \
-        libftdi-devel libusb-devel
+    # yum works on manylinux2014 (CentOS 7) and is a compat shim on newer images
+    yum install -y make gcc gcc-c++ git python3 patchelf
     if test -z $image; then
         image=linux
     fi
