@@ -40,6 +40,15 @@ $compatDest = "$icestormDir\compat"
 if (Test-Path $compatDest) { Remove-Item $compatDest -Recurse -Force }
 Copy-Item "$root\compat" $compatDest -Recurse
 
+# ── Patch upstream sources for MSVC compatibility ────────────────────────────
+# icepll.cc calls abs() on doubles; MSVC's <math.h> doesn't provide abs(double).
+# Replace with fabs() which is unambiguous for floating-point.
+$icepllPath = "$icestormDir\icepll\icepll.cc"
+$content = Get-Content $icepllPath -Raw
+$content = $content -replace 'if \(abs\(fout - f_pllout\) < abs\(best_fout - f_pllout\)\)',
+                              'if (fabs(fout - f_pllout) < fabs(best_fout - f_pllout))'
+Set-Content $icepllPath $content -NoNewline
+
 # ── Configure + build ─────────────────────────────────────────────────────────
 $installDir = "$root\release\icestorm"
 $buildDir   = "$root\build-windows"
