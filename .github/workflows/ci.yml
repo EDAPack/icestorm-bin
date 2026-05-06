@@ -95,7 +95,7 @@ jobs:
               Build of Project IceStorm (main branch)
               Version: ${{ needs.version-check.outputs.rls_version }}
             draft: false
-            prerelease: true
+            prerelease: false
         - name: Download build artifacts
           uses: actions/download-artifact@v4
           with:
