@@ -1,0 +1,26 @@
+package:
+  name: icestorm-bin
+
+  # Prepend the bundled icestorm binaries to PATH when installed via IVPM.
+  env:
+  - name: PATH
+    path-prepend: "${IVPM_PACKAGES}/icestorm-bin/bin"
+
+  dep-sets:
+  - name: default-dev
+    deps:
+    - name: icestorm
+      url: https://github.com/YosysHQ/icestorm.git
+      type: raw
+
+  - name: docs
+    deps:
+    - name: sphinx
+      pypi: true
+      version: ">=7.0"
+    - name: myst-parser
+      pypi: true
+      version: ">=3.0"
+    - name: alabaster
+      pypi: true
+      version: ">=0.7"
