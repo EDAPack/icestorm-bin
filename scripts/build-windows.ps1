@@ -126,7 +126,8 @@ cmake -S $libftdiSrc -B $libftdiBuildDir `
     -DDOCUMENTATION=OFF `
     -DEXAMPLES=OFF `
     -DFTDI_EEPROM=OFF `
-    -DSTATICLIBS=OFF
+    -DSTATICLIBS=OFF `
+    -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON
 if ($LASTEXITCODE -ne 0) { throw "libftdi cmake configure failed" }
 
 cmake --build $libftdiBuildDir --parallel
