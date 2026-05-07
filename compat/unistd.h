@@ -10,9 +10,13 @@
 #define getpid _getpid
 #endif
 /* POSIX usleep(microseconds) → Windows Sleep(milliseconds).
- * winsock2.h must precede windows.h to avoid redefinition conflicts. */
+ * Define _WINSOCKAPI_ before including windows.h so that windows.h does
+ * not pull in winsock.h, which would conflict with any later winsock2.h
+ * inclusion (e.g. from libusb.h or ftdi.h headers). */
 #ifndef usleep
-#include <winsock2.h>
+#ifndef _WINSOCKAPI_
+#define _WINSOCKAPI_
+#endif
 #include <windows.h>
 static __inline int usleep(unsigned long us)
 {
