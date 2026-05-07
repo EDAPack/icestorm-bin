@@ -135,6 +135,16 @@ if ($LASTEXITCODE -ne 0) { throw "libftdi build failed" }
 cmake --install $libftdiBuildDir
 if ($LASTEXITCODE -ne 0) { throw "libftdi install failed" }
 
+# libftdi cmake may not install the import lib (.lib) on Windows — copy it manually
+New-Item -ItemType Directory -Force "$libftdiStaging\lib" | Out-Null
+$builtImportLib = "$libftdiBuildDir\src\ftdi1.lib"
+if (Test-Path $builtImportLib) {
+    Copy-Item $builtImportLib "$libftdiStaging\lib\ftdi1.lib" -Force
+    Write-Host "Copied import lib from build dir to $libftdiStaging\lib\ftdi1.lib"
+} elseif (-not (Test-Path "$libftdiStaging\lib\ftdi1.lib")) {
+    throw "ftdi1.lib not found in build dir ($builtImportLib) or staging dir"
+}
+
 # Locate the installed DLL (target name is ftdi1, so ftdi1.dll on Windows)
 $libftdiInclude = "$libftdiStaging\include\libftdi1"
 $libftdiLib     = "$libftdiStaging\lib\ftdi1.lib"
