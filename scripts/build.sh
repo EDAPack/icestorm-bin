@@ -7,7 +7,8 @@ root=$(pwd)
 #********************************************************************
 if test $(uname -s) = "Linux"; then
     # yum works on manylinux2014 (CentOS 7) and is a compat shim on newer images
-    yum install -y make gcc gcc-c++ git python3 patchelf
+    # cmake and libusb1-devel are needed to build libftdi from source (for iceprog)
+    yum install -y make gcc gcc-c++ git python3 patchelf cmake libusb1-devel
     if test -z $image; then
         image=linux
     fi
@@ -32,6 +33,38 @@ echo "rls_version:      ${rls_version}"
 echo "rls_plat:         ${rls_plat}"
 
 #********************************************************************
+#* Build libftdi from source
+#* (not available in manylinux repos; needed for iceprog)
+#********************************************************************
+LIBFTDI_VERSION=1.5
+staging_dir="${root}/staging"
+mkdir -p "${staging_dir}"
+
+if test ! -d "${root}/libftdi1-${LIBFTDI_VERSION}"; then
+    curl -fL "https://www.intra2net.com/en/developer/libftdi/download/libftdi1-${LIBFTDI_VERSION}.tar.bz2" \
+        | tar -xj -C "${root}"
+    if test $? -ne 0; then exit 1; fi
+fi
+
+cmake -S "${root}/libftdi1-${LIBFTDI_VERSION}" -B "${root}/libftdi1-build" \
+    -DCMAKE_INSTALL_PREFIX="${staging_dir}" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DFTDIPP=OFF \
+    -DPYTHON_BINDINGS=OFF \
+    -DDOCUMENTATION=OFF \
+    -DEXAMPLES=OFF \
+    -DTESTS=OFF \
+    -DFTDI_EEPROM=OFF
+if test $? -ne 0; then exit 1; fi
+
+cmake --build "${root}/libftdi1-build" --parallel
+if test $? -ne 0; then exit 1; fi
+
+cmake --install "${root}/libftdi1-build"
+if test $? -ne 0; then exit 1; fi
+
+#********************************************************************
 #* Clone icestorm
 #********************************************************************
 if test ! -d icestorm; then
@@ -48,11 +81,28 @@ rm -rf "${release_dir}"
 mkdir -p "${release_dir}"
 
 cd ${root}/icestorm
-# Build without iceprog (requires hardware USB access, not useful in binary dist)
-make -j$(nproc) ICEPROG=0 PREFIX="${release_dir}" CXX=g++ CC=gcc
+# PKG_CONFIG_PATH lets the iceprog Makefile find our staged libftdi1
+export PKG_CONFIG_PATH="${staging_dir}/lib/pkgconfig:${staging_dir}/lib64/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+make -j$(nproc) ICEPROG=1 PREFIX="${release_dir}" CXX=g++ CC=gcc
 if test $? -ne 0; then exit 1; fi
 
-make install ICEPROG=0 PREFIX="${release_dir}"
+make install ICEPROG=1 PREFIX="${release_dir}"
+if test $? -ne 0; then exit 1; fi
+
+cd ${root}
+
+# Bundle libftdi shared library into the release so iceprog can find it at runtime
+mkdir -p "${release_dir}/lib"
+# lib64 on CentOS/RHEL, lib on others — copy whichever exists
+for libdir in "${staging_dir}/lib64" "${staging_dir}/lib"; do
+    if ls "${libdir}"/libftdi1.so* 2>/dev/null | grep -q .; then
+        cp -P "${libdir}"/libftdi1.so* "${release_dir}/lib/"
+        break
+    fi
+done
+
+# Set ORIGIN-relative rpath so iceprog finds the bundled libftdi1
+patchelf --set-rpath '$ORIGIN/../lib' "${release_dir}/bin/iceprog"
 if test $? -ne 0; then exit 1; fi
 
 # Copy export.envrc for ivpm PATH integration

@@ -93,6 +93,21 @@ target_compile_definitions(icetime PRIVATE
 )
 install(TARGETS icetime RUNTIME DESTINATION bin)
 
+# ── iceprog (Windows only; requires libftdi1 paths from build script) ─────────
+if(WIN32 AND DEFINED LIBFTDI1_INCLUDE_DIR)
+    add_ice_exe(iceprog iceprog/iceprog.c iceprog/mpsse.c)
+    target_include_directories(iceprog PRIVATE "${LIBFTDI1_INCLUDE_DIR}")
+    target_link_libraries(iceprog "${LIBFTDI1_LIBRARY}")
+    # Install the runtime DLLs next to the .exe files
+    install(FILES "${LIBFTDI1_DLL}" "${LIBUSB1_DLL}" DESTINATION bin)
+else()
+    if(NOT WIN32)
+        message(STATUS "iceprog: not built by CMake on non-Windows (built by Makefile)")
+    else()
+        message(STATUS "iceprog: skipped (LIBFTDI1_INCLUDE_DIR not set)")
+    endif()
+endif()
+
 # ── Data files ────────────────────────────────────────────────────────────────
 # icebox chip databases (for icepack, icetime)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/icebox/"

@@ -24,6 +24,75 @@ $rlsPlat = "windows-x64"
 Write-Host "Version:  $IcestormVersion"
 Write-Host "Platform: $rlsPlat"
 
+# ── Build libusb (pre-built binaries) ────────────────────────────────────────
+$LIBUSB_VERSION = "1.0.27"
+$libusbArchive = "$root\libusb-$LIBUSB_VERSION.7z"
+$libusbDir     = "$root\libusb-$LIBUSB_VERSION"
+
+if (-not (Test-Path $libusbDir)) {
+    Write-Host "Downloading libusb $LIBUSB_VERSION..."
+    Invoke-WebRequest "https://github.com/libusb/libusb/releases/download/v$LIBUSB_VERSION/libusb-$LIBUSB_VERSION.7z" `
+        -OutFile $libusbArchive
+    # 7-Zip is available on GitHub Actions runners and most Windows dev machines
+    7z x $libusbArchive "-o$libusbDir" -y | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "libusb extraction failed" }
+}
+
+# Use VS2022 pre-built binaries (GitHub Actions runner uses VS 2022)
+$libusbInclude = "$libusbDir\include\libusb-1.0"
+$libusbLib     = "$libusbDir\VS2022-x64\dll\libusb-1.0.lib"
+$libusbDll     = "$libusbDir\VS2022-x64\dll\libusb-1.0.dll"
+
+# ── Build libftdi from source ─────────────────────────────────────────────────
+$LIBFTDI_VERSION = "1.5"
+$libftdiArchive = "$root\libftdi1-$LIBFTDI_VERSION.tar.bz2"
+$libftdiSrc     = "$root\libftdi1-$LIBFTDI_VERSION"
+$libftdiStaging = "$root\staging-libftdi"
+$libftdiBuildDir = "$root\build-libftdi"
+
+if (-not (Test-Path $libftdiSrc)) {
+    Write-Host "Downloading libftdi $LIBFTDI_VERSION..."
+    Invoke-WebRequest "https://www.intra2net.com/en/developer/libftdi/download/libftdi1-$LIBFTDI_VERSION.tar.bz2" `
+        -OutFile $libftdiArchive
+    Push-Location $root
+    cmake -E tar xjf $libftdiArchive
+    if ($LASTEXITCODE -ne 0) { throw "libftdi extraction failed" }
+    Pop-Location
+}
+
+if (Test-Path $libftdiBuildDir) { Remove-Item $libftdiBuildDir -Recurse -Force }
+New-Item -ItemType Directory $libftdiBuildDir | Out-Null
+New-Item -ItemType Directory -Force $libftdiStaging | Out-Null
+
+cmake -S $libftdiSrc -B $libftdiBuildDir `
+    -G Ninja `
+    -DCMAKE_BUILD_TYPE=Release `
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
+    "-DCMAKE_INSTALL_PREFIX=$libftdiStaging" `
+    "-DUSB1_INCLUDE_DIR=$libusbInclude" `
+    "-DUSB1_LIBRARY=$libusbLib" `
+    -DFTDIPP=OFF `
+    -DPYTHON_BINDINGS=OFF `
+    -DDOCUMENTATION=OFF `
+    -DEXAMPLES=OFF `
+    -DTESTS=OFF `
+    -DFTDI_EEPROM=OFF
+if ($LASTEXITCODE -ne 0) { throw "libftdi cmake configure failed" }
+
+cmake --build $libftdiBuildDir --parallel
+if ($LASTEXITCODE -ne 0) { throw "libftdi build failed" }
+
+cmake --install $libftdiBuildDir
+if ($LASTEXITCODE -ne 0) { throw "libftdi install failed" }
+
+# Locate the installed DLL (target name is ftdi1, so ftdi1.dll on Windows)
+$libftdiInclude = "$libftdiStaging\include\libftdi1"
+$libftdiLib     = "$libftdiStaging\lib\ftdi1.lib"
+$libftdiDll     = (Get-ChildItem "$libftdiStaging\bin" -Filter "ftdi*.dll" |
+                   Select-Object -First 1).FullName
+if (-not $libftdiDll) { throw "libftdi DLL not found in $libftdiStaging\bin" }
+Write-Host "libftdi DLL: $libftdiDll"
+
 # ── Clone icestorm ────────────────────────────────────────────────────────────
 $icestormDir = "$root\icestorm"
 if (-not (Test-Path $icestormDir)) {
@@ -72,7 +141,11 @@ cmake -S $icestormDir -B $buildDir `
     -DCMAKE_BUILD_TYPE=Release `
     -DCMAKE_INSTALL_PREFIX="$installDir" `
     "-DCOMPAT_DIR=$compatDirFwd" `
-    "-DGEN_TIMINGS_SCRIPT=$genTimingsScript"
+    "-DGEN_TIMINGS_SCRIPT=$genTimingsScript" `
+    "-DLIBFTDI1_INCLUDE_DIR=$libftdiInclude" `
+    "-DLIBFTDI1_LIBRARY=$libftdiLib" `
+    "-DLIBFTDI1_DLL=$libftdiDll" `
+    "-DLIBUSB1_DLL=$libusbDll"
 if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
 
 cmake --build $buildDir --parallel

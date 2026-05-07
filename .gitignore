@@ -220,3 +220,10 @@ __marimo__/
 # icestorm-bin build artifacts
 release/
 icestorm/
+libftdi1-1.5/
+libftdi1-build/
+staging/
+staging-libftdi/
+build-libftdi/
+build-windows/
+*.code-workspace
