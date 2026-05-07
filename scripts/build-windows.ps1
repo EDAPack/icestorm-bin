@@ -75,7 +75,8 @@ cmake -S $libftdiSrc -B $libftdiBuildDir `
     -DPYTHON_BINDINGS=OFF `
     -DDOCUMENTATION=OFF `
     -DEXAMPLES=OFF `
-    -DFTDI_EEPROM=OFF
+    -DFTDI_EEPROM=OFF `
+    -DSTATICLIBS=OFF
 if ($LASTEXITCODE -ne 0) { throw "libftdi cmake configure failed" }
 
 cmake --build $libftdiBuildDir --parallel
