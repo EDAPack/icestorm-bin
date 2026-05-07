@@ -93,6 +93,7 @@ cmake -S $libftdiSrc -B $libftdiBuildDir `
     "-DCMAKE_INSTALL_PREFIX=$libftdiStaging" `
     "-DLIBUSB_INCLUDE_DIR=$libusbInclude" `
     "-DLIBUSB_LIBRARIES=$libusbLib" `
+    "-DCMAKE_C_FLAGS=-I$($root.Replace('\','/'))/compat" `
     -DFTDIPP=OFF `
     -DPYTHON_BINDINGS=OFF `
     -DDOCUMENTATION=OFF `
