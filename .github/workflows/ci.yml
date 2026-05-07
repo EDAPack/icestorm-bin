@@ -23,35 +23,35 @@ jobs:
             echo "rls_version: ${rls_version}"
 
     # Linux builds temporarily disabled while iterating on Windows build
-    # build-linux-x86_64:
-    #     runs-on: 'ubuntu-latest'
-    #     needs: version-check
-    #     strategy:
-    #       matrix:
-    #         image: [manylinux2014_x86_64, manylinux_2_28_x86_64, manylinux_2_34_x86_64]
-    #     steps:
-    #         - uses: actions/checkout@v4
-    #         - name: build
-    #           env:
-    #             BUILD_NUM: ${{ github.run_id }}
-    #             image: ${{ matrix.image }}
-    #             icestorm_version: ${{ needs.version-check.outputs.rls_version }}
-    #           run: >
-    #             docker run --rm
-    #             --volume "$(pwd):/io"
-    #             --env BUILD_NUM
-    #             --env image
-    #             --env icestorm_version
-    #             --workdir /io
-    #             quay.io/pypa/${{ matrix.image }}
-    #             /io/scripts/build.sh
-    #         - name: upload artifact
-    #           uses: actions/upload-artifact@v4
-    #           with:
-    #             name: "icestorm-${{ matrix.image }}"
-    #             path: "release/icestorm-${{ matrix.image }}-*.tar.gz"
-    #             if-no-files-found: error
-    #             retention-days: 7
+    build-linux-x86_64:
+        runs-on: 'ubuntu-latest'
+        needs: version-check
+        strategy:
+          matrix:
+            image: [manylinux2014_x86_64, manylinux_2_28_x86_64, manylinux_2_34_x86_64]
+        steps:
+            - uses: actions/checkout@v4
+            - name: build
+              env:
+                BUILD_NUM: ${{ github.run_id }}
+                image: ${{ matrix.image }}
+                icestorm_version: ${{ needs.version-check.outputs.rls_version }}
+              run: >
+                docker run --rm
+                --volume "$(pwd):/io"
+                --env BUILD_NUM
+                --env image
+                --env icestorm_version
+                --workdir /io
+                quay.io/pypa/${{ matrix.image }}
+                /io/scripts/build.sh
+            - name: upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: "icestorm-${{ matrix.image }}"
+                path: "release/icestorm-${{ matrix.image }}-*.tar.gz"
+                if-no-files-found: error
+                retention-days: 7
 
     build-windows-x64:
         runs-on: 'windows-latest'
@@ -77,6 +77,7 @@ jobs:
     publish:
         runs-on: 'ubuntu-latest'
         needs:
+        - build-linux-x86_64
         - build-windows-x64
         - version-check
         permissions:
@@ -107,5 +108,6 @@ jobs:
             tag_name: "v${{ needs.version-check.outputs.rls_version }}"
             files: |
               release/**/*.zip
+              release/**/*.tar.gz
             fail_on_unmatched_files: true
 
