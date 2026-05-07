@@ -82,12 +82,15 @@ if (-not (Test-Path $libftdiSrc)) {
     Pop-Location
 }
 
-# Patch ftdi_stream.c: replace <sys/time.h> with an inline Windows compat
-# that provides gettimeofday() via GetSystemTimeAsFileTime().
+# Patch ftdi_stream.c: the sys/time.h include is guarded by #ifndef _WIN32
+# but gettimeofday() is still called unconditionally. Add an #else branch
+# providing a Windows implementation via GetSystemTimeAsFileTime().
 $ftdiStreamPath = "$libftdiSrc\src\ftdi_stream.c"
 $content = Get-Content $ftdiStreamPath -Raw
 $compat = @'
-#ifdef _WIN32
+#ifndef _WIN32
+#include <sys/time.h>
+#else
 #include <winsock2.h>
 #include <windows.h>
 static int gettimeofday(struct timeval *tv, void *tz) {
@@ -101,11 +104,10 @@ static int gettimeofday(struct timeval *tv, void *tz) {
     tv->tv_usec = (long)(tmp % 1000000UL);
     (void)tz; return 0;
 }
-#else
-#include <sys/time.h>
 #endif
 '@
-$content = $content -replace '#include <sys/time\.h>', $compat.Trim()
+# Match the existing #ifndef _WIN32 / #include <sys/time.h> / #endif block
+$content = $content -replace '(?s)#ifndef _WIN32\s*\r?\n#include <sys/time\.h>\s*\r?\n#endif', $compat.Trim()
 Set-Content $ftdiStreamPath $content -NoNewline
 
 if (Test-Path $libftdiBuildDir) { Remove-Item $libftdiBuildDir -Recurse -Force }
