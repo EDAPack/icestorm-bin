@@ -137,12 +137,18 @@ if ($LASTEXITCODE -ne 0) { throw "libftdi install failed" }
 
 # libftdi cmake may not install the import lib (.lib) on Windows — copy it manually
 New-Item -ItemType Directory -Force "$libftdiStaging\lib" | Out-Null
-$builtImportLib = "$libftdiBuildDir\src\ftdi1.lib"
-if (Test-Path $builtImportLib) {
-    Copy-Item $builtImportLib "$libftdiStaging\lib\ftdi1.lib" -Force
-    Write-Host "Copied import lib from build dir to $libftdiStaging\lib\ftdi1.lib"
-} elseif (-not (Test-Path "$libftdiStaging\lib\ftdi1.lib")) {
-    throw "ftdi1.lib not found in build dir ($builtImportLib) or staging dir"
+if (-not (Test-Path "$libftdiStaging\lib\ftdi1.lib")) {
+    $builtImportLib = Get-ChildItem -Recurse -Filter "ftdi1.lib" $libftdiBuildDir |
+                      Where-Object { $_.FullName -notmatch 'static' } |
+                      Select-Object -First 1
+    if ($builtImportLib) {
+        Write-Host "Found import lib: $($builtImportLib.FullName)"
+        Copy-Item $builtImportLib.FullName "$libftdiStaging\lib\ftdi1.lib" -Force
+    } else {
+        Write-Host "All .lib files in build dir:"
+        Get-ChildItem -Recurse -Filter "*.lib" $libftdiBuildDir | ForEach-Object { Write-Host "  $($_.FullName)" }
+        throw "ftdi1.lib import library not found anywhere in $libftdiBuildDir"
+    }
 }
 
 # Locate the installed DLL (target name is ftdi1, so ftdi1.dll on Windows)
