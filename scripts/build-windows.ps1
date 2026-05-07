@@ -69,13 +69,12 @@ cmake -S $libftdiSrc -B $libftdiBuildDir `
     -DCMAKE_BUILD_TYPE=Release `
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 `
     "-DCMAKE_INSTALL_PREFIX=$libftdiStaging" `
-    "-DUSB1_INCLUDE_DIR=$libusbInclude" `
-    "-DUSB1_LIBRARY=$libusbLib" `
+    "-DLIBUSB_INCLUDE_DIR=$libusbInclude" `
+    "-DLIBUSB_LIBRARIES=$libusbLib" `
     -DFTDIPP=OFF `
     -DPYTHON_BINDINGS=OFF `
     -DDOCUMENTATION=OFF `
     -DEXAMPLES=OFF `
-    -DTESTS=OFF `
     -DFTDI_EEPROM=OFF
 if ($LASTEXITCODE -ne 0) { throw "libftdi cmake configure failed" }
 
