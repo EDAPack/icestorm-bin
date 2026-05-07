@@ -38,10 +38,32 @@ if (-not (Test-Path $libusbDir)) {
     if ($LASTEXITCODE -ne 0) { throw "libusb extraction failed" }
 }
 
-# Use VS2022 pre-built binaries (GitHub Actions runner uses VS 2022)
-$libusbInclude = "$libusbDir\include\libusb-1.0"
-$libusbLib     = "$libusbDir\VS2022-x64\dll\libusb-1.0.lib"
-$libusbDll     = "$libusbDir\VS2022-x64\dll\libusb-1.0.dll"
+# Robustly locate the extracted files (archive structure varies by release)
+Write-Host "libusb extracted structure:"
+Get-ChildItem $libusbDir -Recurse -File | Select-Object -ExpandProperty FullName | Select-Object -First 30
+
+$libusbInclude = (Get-ChildItem $libusbDir -Recurse -Filter "libusb.h" |
+                  Select-Object -First 1).DirectoryName
+# Prefer the import .lib next to a .dll (dll/ subdir), for x64
+$libusbLib = (Get-ChildItem $libusbDir -Recurse -Filter "libusb-1.0.lib" |
+              Where-Object { $_.DirectoryName -match 'dll' -and $_.DirectoryName -match '64' } |
+              Select-Object -First 1).FullName
+if (-not $libusbLib) {
+    # Fallback: any .lib for x64
+    $libusbLib = (Get-ChildItem $libusbDir -Recurse -Filter "libusb-1.0.lib" |
+                  Where-Object { $_.DirectoryName -match '64' } |
+                  Select-Object -First 1).FullName
+}
+$libusbDll = (Get-ChildItem $libusbDir -Recurse -Filter "libusb-1.0.dll" |
+              Where-Object { $_.DirectoryName -match '64' } |
+              Select-Object -First 1).FullName
+
+if (-not $libusbInclude) { throw "libusb.h not found in extracted archive" }
+if (-not $libusbLib)     { throw "libusb-1.0.lib not found in extracted archive" }
+if (-not $libusbDll)     { throw "libusb-1.0.dll not found in extracted archive" }
+Write-Host "libusb include: $libusbInclude"
+Write-Host "libusb lib:     $libusbLib"
+Write-Host "libusb dll:     $libusbDll"
 
 # ── Build libftdi from source ─────────────────────────────────────────────────
 $LIBFTDI_VERSION = "1.5"
