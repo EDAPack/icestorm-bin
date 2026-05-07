@@ -82,6 +82,32 @@ if (-not (Test-Path $libftdiSrc)) {
     Pop-Location
 }
 
+# Patch ftdi_stream.c: replace <sys/time.h> with an inline Windows compat
+# that provides gettimeofday() via GetSystemTimeAsFileTime().
+$ftdiStreamPath = "$libftdiSrc\src\ftdi_stream.c"
+$content = Get-Content $ftdiStreamPath -Raw
+$compat = @'
+#ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
+static int gettimeofday(struct timeval *tv, void *tz) {
+    FILETIME ft; unsigned long long tmp;
+    GetSystemTimeAsFileTime(&ft);
+    tmp  = (unsigned long long)ft.dwHighDateTime << 32;
+    tmp |= ft.dwLowDateTime;
+    tmp -= 116444736000000000ULL;
+    tmp /= 10;
+    tv->tv_sec  = (long)(tmp / 1000000UL);
+    tv->tv_usec = (long)(tmp % 1000000UL);
+    (void)tz; return 0;
+}
+#else
+#include <sys/time.h>
+#endif
+'@
+$content = $content -replace '#include <sys/time\.h>', $compat.Trim()
+Set-Content $ftdiStreamPath $content -NoNewline
+
 if (Test-Path $libftdiBuildDir) { Remove-Item $libftdiBuildDir -Recurse -Force }
 New-Item -ItemType Directory $libftdiBuildDir | Out-Null
 New-Item -ItemType Directory -Force $libftdiStaging | Out-Null
@@ -93,7 +119,6 @@ cmake -S $libftdiSrc -B $libftdiBuildDir `
     "-DCMAKE_INSTALL_PREFIX=$libftdiStaging" `
     "-DLIBUSB_INCLUDE_DIR=$libusbInclude" `
     "-DLIBUSB_LIBRARIES=$libusbLib" `
-    "-DCMAKE_C_FLAGS=-I$($root.Replace('\','/'))/compat" `
     -DFTDIPP=OFF `
     -DPYTHON_BINDINGS=OFF `
     -DDOCUMENTATION=OFF `
