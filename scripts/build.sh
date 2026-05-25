@@ -109,6 +109,26 @@ if test $? -ne 0; then exit 1; fi
 cp ${root}/scripts/export.envrc "${release_dir}/"
 
 #********************************************************************
+#* Stage Agent Skills
+#********************************************************************
+# Skills are authored under skills/<name>/ and listed in
+# scripts/skill-manifest.yaml.  update/stage-skills.py validates each
+# skill's frontmatter and binary references and emits skills/index.json.
+manifest="${root}/scripts/skill-manifest.yaml"
+if test -f "${manifest}"; then
+    echo "=== Staging Agent Skills ==="
+    python3 "${root}/../update/stage-skills.py" \
+        --manifest "${manifest}" \
+        --source-root "${root}" \
+        --release-root "${release_dir}" \
+        --dest "${release_dir}/skills"
+    if test $? -ne 0; then
+        echo "ERROR: skill staging failed" >&2
+        exit 1
+    fi
+fi
+
+#********************************************************************
 #* Create release tarball
 #********************************************************************
 cd ${root}/release

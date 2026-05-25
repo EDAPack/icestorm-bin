@@ -1,0 +1,3 @@
+# Minimal HX1K iCEstick pin constraint file.
+set_io clk 21
+set_io led 99

@@ -219,7 +219,7 @@ __marimo__/
 
 # icestorm-bin build artifacts
 release/
-icestorm/
+./icestorm/
 libftdi1-1.5/
 libftdi1-build/
 staging/
