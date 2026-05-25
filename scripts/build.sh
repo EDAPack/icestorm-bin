@@ -112,12 +112,12 @@ cp ${root}/scripts/export.envrc "${release_dir}/"
 #* Stage Agent Skills
 #********************************************************************
 # Skills are authored under skills/<name>/ and listed in
-# scripts/skill-manifest.yaml.  update/stage-skills.py validates each
+# scripts/skill-manifest.yaml.  scripts/stage-skills.py validates each
 # skill's frontmatter and binary references and emits skills/index.json.
 manifest="${root}/scripts/skill-manifest.yaml"
 if test -f "${manifest}"; then
     echo "=== Staging Agent Skills ==="
-    python3 "${root}/../update/stage-skills.py" \
+    python3 "${root}/scripts/stage-skills.py" \
         --manifest "${manifest}" \
         --source-root "${root}" \
         --release-root "${release_dir}" \
