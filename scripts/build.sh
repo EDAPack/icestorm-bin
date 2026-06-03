@@ -14,8 +14,10 @@ set -euo pipefail
 
 # --- locate edapack-common --------------------------------------------------
 if [ -z "${EC_COMMON:-}" ]; then
-    _cand="$(cd "$(dirname "$0")/../../edapack-common" 2>/dev/null && pwd || true)"
-    [ -n "$_cand" ] && EC_COMMON="$_cand"
+    _repo="$(cd "$(dirname "$0")/.." && pwd)"
+    for _c in "$_repo/packages/edapack-common" "$_repo/../edapack-common"; do
+        if [ -f "$_c/scripts/build-common.sh" ]; then EC_COMMON="$_c"; break; fi
+    done
 fi
 if [ -z "${EC_COMMON:-}" ] || [ ! -f "$EC_COMMON/scripts/build-common.sh" ]; then
     echo "ERROR: edapack-common not found. Set EC_COMMON or place edapack-common beside icestorm-bin." >&2

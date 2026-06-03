@@ -9,6 +9,8 @@ package:
   dep-sets:
   - name: default-dev
     deps:
+    - name: edapack-common
+      url: https://github.com/edapack/edapack-common.git
     - name: icestorm
       url: https://github.com/YosysHQ/icestorm.git
       type: raw
