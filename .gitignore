@@ -227,3 +227,8 @@ staging-libftdi/
 build-libftdi/
 build-windows/
 *.code-workspace
+
+# edapack: cloned core source + rootless build dirs (legacy root-owned trees)
+icestorm/
+.build/
+dist/

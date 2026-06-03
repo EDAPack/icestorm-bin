@@ -1,0 +1,113 @@
+name: CI
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    # Every Sunday at 12PM UTC
+    - cron: "0 12 * * 0"
+
+jobs:
+    version-check:
+        runs-on: 'ubuntu-latest'
+        outputs:
+            rls_version: ${{ steps.check.outputs.rls_version }}
+        steps:
+        - name: fetch-version
+          id: check
+          run: |
+            # icestorm has a single v1.1 tag; we always build from main and
+            # append the CI run ID for traceability.
+            base_version="1.1"
+            rls_version="${base_version}.${{ github.run_id }}"
+            echo "rls_version=${rls_version}" >> ${GITHUB_OUTPUT}
+            echo "rls_version: ${rls_version}"
+
+    # Linux builds temporarily disabled while iterating on Windows build
+    build-linux-x86_64:
+        runs-on: 'ubuntu-latest'
+        needs: version-check
+        strategy:
+          matrix:
+            image: [manylinux2014_x86_64, manylinux_2_28_x86_64, manylinux_2_34_x86_64]
+        steps:
+            - uses: actions/checkout@v4
+            - name: build
+              env:
+                BUILD_NUM: ${{ github.run_id }}
+                image: ${{ matrix.image }}
+                icestorm_version: ${{ needs.version-check.outputs.rls_version }}
+              run: >
+                docker run --rm
+                --volume "$(pwd):/io"
+                --env BUILD_NUM
+                --env image
+                --env icestorm_version
+                --workdir /io
+                quay.io/pypa/${{ matrix.image }}
+                /io/scripts/build.sh
+            - name: upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: "icestorm-${{ matrix.image }}"
+                path: "release/icestorm-${{ matrix.image }}-*.tar.gz"
+                if-no-files-found: error
+                retention-days: 7
+
+    build-windows-x64:
+        runs-on: 'windows-latest'
+        needs: version-check
+        steps:
+            - uses: actions/checkout@v4
+            - uses: ilammy/msvc-dev-cmd@v1
+              with:
+                arch: x64
+            - name: build
+              env:
+                BUILD_NUM: ${{ github.run_id }}
+              run: |
+                pwsh scripts/build-windows.ps1 -IcestormVersion "${{ needs.version-check.outputs.rls_version }}"
+            - name: upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: "icestorm-windows-x64"
+                path: "release/icestorm-windows-x64-*.zip"
+                if-no-files-found: error
+                retention-days: 7
+
+    publish:
+        runs-on: 'ubuntu-latest'
+        needs:
+        - build-linux-x86_64
+        - build-windows-x64
+        - version-check
+        permissions:
+            contents: write
+        steps:
+        - name: Create Release
+          id: create_release
+          uses: actions/create-release@v1
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          with:
+            tag_name: "v${{ needs.version-check.outputs.rls_version }}"
+            release_name: "Release v${{ needs.version-check.outputs.rls_version }}"
+            body: |
+              Build of Project IceStorm (main branch)
+              Version: ${{ needs.version-check.outputs.rls_version }}
+            draft: false
+            prerelease: false
+        - name: Download build artifacts
+          uses: actions/download-artifact@v4
+          with:
+            pattern: "icestorm-*"
+            path: release
+            merge-multiple: true
+        - name: Upload assets to release
+          uses: softprops/action-gh-release@v2
+          with:
+            tag_name: "v${{ needs.version-check.outputs.rls_version }}"
+            files: |
+              release/**/*.zip
+              release/**/*.tar.gz
+            fail_on_unmatched_files: true
+

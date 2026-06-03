@@ -1,138 +1,83 @@
-#!/bin/sh -x
+#!/usr/bin/env bash
+# icestorm-bin build driver.
+#
+# Builds Project IceStorm (icepack/iceprog/icetime/...) from the exact commit
+# resolved by edapack-common's resolve-inputs.py, bundling libftdi (built from a
+# pinned source tarball) so iceprog is self-contained, and emits a release
+# manifest.
+#
+# Runs in CI (reusable workflow) and locally (local-build.sh). All transient
+# state — including the libftdi download/build/staging that previously left
+# root-owned dirs in the workspace — now goes to WORK_DIR. Tarball + manifest
+# land in OUT_DIR; the source tree is never written to.
+set -euo pipefail
 
-root=$(pwd)
+# --- locate edapack-common --------------------------------------------------
+if [ -z "${EC_COMMON:-}" ]; then
+    _cand="$(cd "$(dirname "$0")/../../edapack-common" 2>/dev/null && pwd || true)"
+    [ -n "$_cand" ] && EC_COMMON="$_cand"
+fi
+if [ -z "${EC_COMMON:-}" ] || [ ! -f "$EC_COMMON/scripts/build-common.sh" ]; then
+    echo "ERROR: edapack-common not found. Set EC_COMMON or place edapack-common beside icestorm-bin." >&2
+    exit 1
+fi
+# shellcheck source=/dev/null
+source "$EC_COMMON/scripts/build-common.sh"
 
-#********************************************************************
-#* Install required packages
-#********************************************************************
-if test $(uname -s) = "Linux"; then
-    # yum works on manylinux2014 (CentOS 7) and is a compat shim on newer images
-    # cmake and libusb1-devel are needed to build libftdi from source (for iceprog)
-    yum install -y make gcc gcc-c++ git python3 patchelf cmake libusb1-devel
-    if test -z $image; then
-        image=linux
-    fi
-    rls_plat=${image}
+: "${EC_PACKAGE:=icestorm-bin}"
+export EC_PACKAGE
+ec_init_dirs
+ec_prepare_candidate
+
+os="$(uname -s)"
+plat="${EC_IMAGE_NAME:-}"
+[ "$os" = "Linux" ] && : "${plat:=linux}"
+njobs="$(nproc 2>/dev/null || echo 4)"
+
+if [ "${EC_INSTALL_DEPS:-0}" = "1" ] && [ "$os" = "Linux" ]; then
+    yum install -y make gcc gcc-c++ git python3 patchelf cmake libusb1-devel || true
 fi
 
-#********************************************************************
-#* Validate environment variables
-#********************************************************************
-if test -z "${icestorm_version}"; then
-    if test -z "${BUILD_NUM}"; then
-        icestorm_version="1.1"
-    else
-        icestorm_version="1.1.${BUILD_NUM}"
-    fi
-fi
-
-rls_version="${icestorm_version}"
-
-echo "icestorm_version: ${icestorm_version}"
-echo "rls_version:      ${rls_version}"
-echo "rls_plat:         ${rls_plat}"
-
-#********************************************************************
-#* Build libftdi from source
-#* (not available in manylinux repos; needed for iceprog)
-#********************************************************************
+# --- libftdi (pinned source tarball, built into WORK_DIR) -------------------
 LIBFTDI_VERSION=1.5
-staging_dir="${root}/staging"
-mkdir -p "${staging_dir}"
-
-if test ! -d "${root}/libftdi1-${LIBFTDI_VERSION}"; then
+staging_dir="$WORK_DIR/staging"
+libftdi_src="$WORK_DIR/libftdi1-${LIBFTDI_VERSION}"
+libftdi_build="$WORK_DIR/libftdi1-build"
+mkdir -p "$staging_dir"
+if [ ! -d "$libftdi_src" ]; then
     curl -fL "https://www.intra2net.com/en/developer/libftdi/download/libftdi1-${LIBFTDI_VERSION}.tar.bz2" \
-        | tar -xj -C "${root}"
-    if test $? -ne 0; then exit 1; fi
+        | tar -xj -C "$WORK_DIR"
 fi
-
-cmake -S "${root}/libftdi1-${LIBFTDI_VERSION}" -B "${root}/libftdi1-build" \
-    -DCMAKE_INSTALL_PREFIX="${staging_dir}" \
+cmake -S "$libftdi_src" -B "$libftdi_build" \
+    -DCMAKE_INSTALL_PREFIX="$staging_dir" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-    -DFTDIPP=OFF \
-    -DPYTHON_BINDINGS=OFF \
-    -DDOCUMENTATION=OFF \
-    -DEXAMPLES=OFF \
-    -DTESTS=OFF \
-    -DFTDI_EEPROM=OFF
-if test $? -ne 0; then exit 1; fi
+    -DFTDIPP=OFF -DPYTHON_BINDINGS=OFF -DDOCUMENTATION=OFF \
+    -DEXAMPLES=OFF -DTESTS=OFF -DFTDI_EEPROM=OFF
+cmake --build "$libftdi_build" --parallel
+cmake --install "$libftdi_build"
 
-cmake --build "${root}/libftdi1-build" --parallel
-if test $? -ne 0; then exit 1; fi
+# --- icestorm (resolved commit) ---------------------------------------------
+ice_src="$(ec_clone_input icestorm "$(ec_core_get repo)" "$(ec_core_get resolved_sha)")"
+release_root="$WORK_DIR/release/icestorm"
+rm -rf "$release_root"; mkdir -p "$release_root"
 
-cmake --install "${root}/libftdi1-build"
-if test $? -ne 0; then exit 1; fi
-
-#********************************************************************
-#* Clone icestorm
-#********************************************************************
-if test ! -d icestorm; then
-    git clone https://github.com/YosysHQ/icestorm icestorm
-    if test $? -ne 0; then exit 1; fi
-fi
-git config --global --add safe.directory ${root}/icestorm
-
-#********************************************************************
-#* Build icestorm
-#********************************************************************
-release_dir="${root}/release/icestorm"
-rm -rf "${release_dir}"
-mkdir -p "${release_dir}"
-
-cd ${root}/icestorm
-# PKG_CONFIG_PATH lets the iceprog Makefile find our staged libftdi1
 export PKG_CONFIG_PATH="${staging_dir}/lib/pkgconfig:${staging_dir}/lib64/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-make -j$(nproc) ICEPROG=1 PREFIX="${release_dir}" CXX=g++ CC=gcc
-if test $? -ne 0; then exit 1; fi
+make -C "$ice_src" -j"$njobs" ICEPROG=1 PREFIX="$release_root" CXX=g++ CC=gcc
+make -C "$ice_src" install ICEPROG=1 PREFIX="$release_root"
 
-make install ICEPROG=1 PREFIX="${release_dir}"
-if test $? -ne 0; then exit 1; fi
-
-cd ${root}
-
-# Bundle libftdi shared library into the release so iceprog can find it at runtime
-mkdir -p "${release_dir}/lib"
-# lib64 on CentOS/RHEL, lib on others — copy whichever exists
-for libdir in "${staging_dir}/lib64" "${staging_dir}/lib"; do
-    if ls "${libdir}"/libftdi1.so* 2>/dev/null | grep -q .; then
-        cp -P "${libdir}"/libftdi1.so* "${release_dir}/lib/"
+# --- bundle libftdi + rpath iceprog -----------------------------------------
+mkdir -p "$release_root/lib"
+for libdir in "$staging_dir/lib64" "$staging_dir/lib"; do
+    if ls "$libdir"/libftdi1.so* 2>/dev/null | grep -q .; then
+        cp -P "$libdir"/libftdi1.so* "$release_root/lib/"
         break
     fi
 done
+[ -e "$release_root/bin/iceprog" ] && patchelf --set-rpath '$ORIGIN/../lib' "$release_root/bin/iceprog"
 
-# Set ORIGIN-relative rpath so iceprog finds the bundled libftdi1
-patchelf --set-rpath '$ORIGIN/../lib' "${release_dir}/bin/iceprog"
-if test $? -ne 0; then exit 1; fi
-
-# Copy export.envrc for ivpm PATH integration
-cp ${root}/scripts/export.envrc "${release_dir}/"
-
-#********************************************************************
-#* Stage Agent Skills
-#********************************************************************
-# Skills are authored under skills/<name>/ and listed in
-# scripts/skill-manifest.yaml.  scripts/stage-skills.py validates each
-# skill's frontmatter and binary references and emits skills/index.json.
-manifest="${root}/scripts/skill-manifest.yaml"
-if test -f "${manifest}"; then
-    echo "=== Staging Agent Skills ==="
-    python3 "${root}/scripts/stage-skills.py" \
-        --manifest "${manifest}" \
-        --source-root "${root}" \
-        --release-root "${release_dir}" \
-        --dest "${release_dir}/skills"
-    if test $? -ne 0; then
-        echo "ERROR: skill staging failed" >&2
-        exit 1
-    fi
-fi
-
-#********************************************************************
-#* Create release tarball
-#********************************************************************
-cd ${root}/release
-tar czf icestorm-${rls_plat}-${rls_version}.tar.gz icestorm
-if test $? -ne 0; then exit 1; fi
-
-echo "Build complete: release/icestorm-${rls_plat}-${rls_version}.tar.gz"
+# --- shared release tail ----------------------------------------------------
+ec_finalize_release "$SRC_DIR" "$release_root" "$CANDIDATE_JSON"
+tarball="icestorm-${plat}-${EC_VERSION}.tar.gz"
+ec_make_tarball "$release_root" "$tarball"
+ec_log "build complete: $tarball"
