@@ -232,3 +232,6 @@ build-windows/
 icestorm/
 .build/
 dist/
+
+# ivpm-fetched dependencies
+packages/
