@@ -1,12 +1,16 @@
 # Input components for icestorm-bin, resolved by edapack-common's
 # resolve-inputs.py. See https://edapack.github.io (Developer Guide → build-inputs).
 #
-# Note: libftdi (1.5) is a fixed-version source tarball (not a git repo), pinned
-# in scripts/build.sh; a bump there changes recipe_sha and so still triggers a
-# rebuild via the change-gate.
+# Comments are kept in this header (not inline in the body) because the
+# published @v1 resolver's YAML parser neither strips trailing inline comments
+# nor skips comment lines when deciding a block's type.
+#   core icestorm - policy branch:main; pin with core_ref=<tag/branch/sha>
+#   libftdi (1.5) is a fixed-version source tarball (not a git repo), pinned in
+#   scripts/build.sh; a bump there changes recipe_sha and so still triggers a
+#   rebuild via the change-gate.
 schema: edapack.build-inputs/1
 
 core:
   name: icestorm
   repo: https://github.com/YosysHQ/icestorm
-  policy: branch:main          # pin with core_ref=<tag/branch/sha>
+  policy: branch:main
