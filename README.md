@@ -31,7 +31,7 @@ Requires Docker. The build runs inside `quay.io/pypa/manylinux_2_34_x86_64`.
 ## Documentation
 
 Full documentation is published at
-[https://EDAPack.github.io/icestorm-bin](https://EDAPack.github.io/icestorm-bin).
+[https://dvkit.org/edapack/icestorm-bin/](https://dvkit.org/edapack/icestorm-bin/).
 
 ## License
 
